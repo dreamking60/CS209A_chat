@@ -12,6 +12,9 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.Socket;
 import java.net.URL;
 import java.util.Objects;
 import java.util.Optional;
@@ -19,7 +22,8 @@ import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Controller implements Initializable {
-
+    Socket client;
+    String[] users;
     @FXML
     ListView<Message> chatContentList;
 
@@ -39,7 +43,17 @@ public class Controller implements Initializable {
                TODO: Check if there is a user with the same name among the currently logged-in users,
                      if so, ask the user to change the username
              */
+
             username = input.get();
+            try {
+                client = new Socket("127.0.0.1", 16000);
+                System.out.println("Successfully connect to the server");
+
+                client.getOutputStream().write(username.getBytes());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
         } else {
             System.out.println("Invalid username " + input + ", exiting");
             Platform.exit();
@@ -49,14 +63,17 @@ public class Controller implements Initializable {
     }
 
     @FXML
-    public void createPrivateChat() {
+    public void createPrivateChat() throws IOException, InterruptedException {
         AtomicReference<String> user = new AtomicReference<>();
 
         Stage stage = new Stage();
         ComboBox<String> userSel = new ComboBox<>();
 
         // FIXME: get the user list from server, the current user's name should be filtered out
-        userSel.getItems().addAll("Item 1", "Item 2", "Item 3");
+        getUsers();
+        wait(500);
+
+        userSel.getItems().addAll(users);
 
         Button okBtn = new Button("OK");
         okBtn.setOnAction(e -> {
@@ -73,6 +90,7 @@ public class Controller implements Initializable {
 
         // TODO: if the current user already chatted with the selected user, just open the chat with that user
         // TODO: otherwise, create a new chat item in the left panel, the title should be the selected user's name
+
     }
 
     /**
@@ -98,6 +116,7 @@ public class Controller implements Initializable {
     @FXML
     public void doSendMessage() {
         // TODO
+
     }
 
     /**
@@ -140,4 +159,46 @@ public class Controller implements Initializable {
             };
         }
     }
+
+    public void getUsers() {
+        try {
+            client.getOutputStream().write("USERS".getBytes());
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    class Client implements Runnable{
+        private String clientId;
+        private Socket client;
+
+        public Client(Socket client) {
+            this.client = client;
+        }
+
+        @Override
+        public void run() {
+            // deal with Message
+            try {
+                InputStream in = client.getInputStream();
+                byte[] msg = new byte[1024];
+                int msgLen;
+                while((msgLen = in.read(msg)) != -1) {
+                    String msgStr = new String(msg, 0, msgLen);
+                    if(msgStr.startsWith("USERS:")) {
+                        users = msgStr.split(":")[1].split(",");
+                        System.out.println("Online Users:");
+
+                    } else {
+
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
 }
