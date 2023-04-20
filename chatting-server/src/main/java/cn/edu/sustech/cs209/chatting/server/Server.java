@@ -18,7 +18,7 @@ public class Server {
                Socket client = server.accept();
                System.out.println("Client "+client+" connected.");
 
-                new Thread(new ClientHandler(client, this)).start();
+               new Thread(new ClientHandler(client, this)).start();
            }
 
         } catch (IOException e) {

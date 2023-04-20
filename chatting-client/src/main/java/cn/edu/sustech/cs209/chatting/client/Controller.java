@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -47,12 +48,46 @@ public class Controller implements Initializable {
             username = input.get();
             try {
                 client = new Socket("127.0.0.1", 16000);
-                System.out.println("Successfully connect to the server");
+
+                // get user list
+                InputStream in = client.getInputStream();
+                byte[] buf = new byte[1024];
+                int len = in.read(buf);
+                String userList = new String(buf, 0, len);
+                if(userList.startsWith("USERS:")){
+                    userList = userList.substring(6);
+                    users = userList.split(",");
+                }
+                System.out.println(Arrays.toString(users));
+
+                // check if username is in the list
+                boolean flag = false;
+                do {
+                    if(users != null) {
+                        flag = Arrays.stream(users).anyMatch(user -> user.equals(username));
+                    }
+                    if(!flag) {
+                        break;
+                    }
+
+                    dialog.setContentText("Username already exists. Please choose another username:");
+                    Optional<String> reInput = dialog.showAndWait();
+                    if (reInput.isPresent() && !reInput.get().isEmpty()) {
+                        username = reInput.get();
+                    } else {
+                        System.out.println("Invalid username " + reInput + ", exiting");
+                        Platform.exit();
+                    }
+
+                } while(flag);
 
                 client.getOutputStream().write(username.getBytes());
+                new Thread(new userClient(client)).start();
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+
 
         } else {
             System.out.println("Invalid username " + input + ", exiting");
@@ -167,38 +202,6 @@ public class Controller implements Initializable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    class Client implements Runnable{
-        private String clientId;
-        private Socket client;
-
-        public Client(Socket client) {
-            this.client = client;
-        }
-
-        @Override
-        public void run() {
-            // deal with Message
-            try {
-                InputStream in = client.getInputStream();
-                byte[] msg = new byte[1024];
-                int msgLen;
-                while((msgLen = in.read(msg)) != -1) {
-                    String msgStr = new String(msg, 0, msgLen);
-                    if(msgStr.startsWith("USERS:")) {
-                        users = msgStr.split(":")[1].split(",");
-                        System.out.println("Online Users:");
-
-                    } else {
-
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
     }
 
 }
