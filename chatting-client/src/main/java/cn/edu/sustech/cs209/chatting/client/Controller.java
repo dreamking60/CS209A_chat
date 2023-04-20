@@ -2,6 +2,8 @@ package cn.edu.sustech.cs209.chatting.client;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -9,6 +11,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
@@ -23,12 +26,18 @@ import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Controller implements Initializable {
-    Socket client;
-    String[] users;
+    private Socket client;
+    private String[] users;
+    Chat chat;
+    @FXML
+    ListView<String> chatList;
     @FXML
     ListView<Message> chatContentList;
-
-    String username;
+    private ObservableList<Chat> chats;
+    private ObservableList<String> chatItems;
+    private ObservableList<Message> chatContentItem;
+    private String username;
+    private String selectedUser;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -82,7 +91,7 @@ public class Controller implements Initializable {
                 } while(flag);
 
                 client.getOutputStream().write(username.getBytes());
-                new Thread(new userClient(client)).start();
+                new Thread(new userClient(client, username)).start();
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -94,7 +103,13 @@ public class Controller implements Initializable {
             Platform.exit();
         }
 
+        chats = FXCollections.observableArrayList();
+        chatItems = FXCollections.observableArrayList();
+        chatList.setItems(chatItems);
         chatContentList.setCellFactory(new MessageCellFactory());
+
+
+
     }
 
     @FXML
@@ -102,13 +117,18 @@ public class Controller implements Initializable {
         AtomicReference<String> user = new AtomicReference<>();
 
         Stage stage = new Stage();
+        // set title
+        stage.setTitle("Create Private Chat");
+        // set size
+        stage.setWidth(300);
+        stage.setHeight(100);
+
         ComboBox<String> userSel = new ComboBox<>();
+        userSel.setPromptText("Select a user");
 
         // FIXME: get the user list from server, the current user's name should be filtered out
         getUsers();
-        wait(500);
-
-        userSel.getItems().addAll(users);
+        userSel.getItems().addAll(Arrays.stream(users).filter(u -> !u.equals(username)).toArray(String[]::new));
 
         Button okBtn = new Button("OK");
         okBtn.setOnAction(e -> {
@@ -123,8 +143,21 @@ public class Controller implements Initializable {
         stage.setScene(new Scene(box));
         stage.showAndWait();
 
+        String chooseUser = userSel.getValue();
+        if (chooseUser == null) {
+            return;
+        }
         // TODO: if the current user already chatted with the selected user, just open the chat with that user
         // TODO: otherwise, create a new chat item in the left panel, the title should be the selected user's name
+        if (!chatItems.contains(chooseUser)) {
+            chatItems.add(chooseUser);
+            chats.add(new Chat(username, chooseUser));
+        }
+        selectedUser = chooseUser;
+        chatList.getSelectionModel().select(chooseUser);
+        chat = chats.get(chatItems.indexOf(chooseUser));
+        chatContentItem = chat.getMessages();
+        chatContentList.setItems(chatContentItem);
 
     }
 
@@ -195,9 +228,23 @@ public class Controller implements Initializable {
         }
     }
 
+    public void addChatRecord(String chatRecord) {
+        chatItems.add(chatRecord);
+    }
+
+
+
     public void getUsers() {
         try {
-            client.getOutputStream().write("USERS".getBytes());
+            client.getOutputStream().write("GETUSERS:".getBytes());
+            InputStream in = client.getInputStream();
+            byte[] buf = new byte[1024];
+            int len = in.read(buf);
+            String userList = new String(buf, 0, len);
+            if(userList.startsWith("USERS:")){
+                userList = userList.substring(6);
+                users = userList.split(",");
+            }
 
         } catch (IOException e) {
             e.printStackTrace();
