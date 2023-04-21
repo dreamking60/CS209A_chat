@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 public class ClientHandler implements Runnable{
@@ -30,6 +31,9 @@ public class ClientHandler implements Runnable{
             clientId = new String(id, 0, clientIdLen);
             server.getClientList().put(clientId, client);
 
+            // Update user list
+            updateUserList();
+
             // Read the message from client
             byte[] msg = new byte[1024];
             int msgLen;
@@ -54,12 +58,13 @@ public class ClientHandler implements Runnable{
     }
 
     // Send message to target client
-    public synchronized boolean sendMessage(String msg) {
+    public boolean sendMessage(String msg) {
         try {
             String Head = msg.split(":")[0];
             if(Head.equals("MSG")) {
                 String targetClientId =  msg.split(":")[1];
-                String msgContent = msg.split(":")[2];
+                String msgBody = msg.substring(4+targetClientId.length()+1);
+                String msgContent = "MSG:" + clientId + ":" + msgBody;
 
                 Socket targetClient = server.getClientList().get(targetClientId);
                 if (targetClient == null) {
@@ -86,9 +91,16 @@ public class ClientHandler implements Runnable{
         }
     }
 
-    // return user list
-    public void useList() {
-
+    private void updateUserList() {
+        HashMap<String, Socket> clientList = server.getClientList();
+        String userList = "USERS:" + clientList.keySet().stream().collect(Collectors.joining(","));
+        System.out.println(userList);
+        clientList.forEach((k, v) -> {
+            try {
+                v.getOutputStream().write(userList.getBytes());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
     }
-
 }

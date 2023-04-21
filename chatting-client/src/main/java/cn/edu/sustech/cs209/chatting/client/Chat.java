@@ -30,4 +30,12 @@ public class Chat {
     public void addMessage(Message message) {
         messages.add(message);
     }
+
+    public void addMessage(Long timestamp, String data) {
+        messages.add(new Message(timestamp, participant1, participant2, data));
+    }
+
+    public void getMessages(Long timestamp, String data) {
+        messages.add(new Message(timestamp, participant2, participant1, data));
+    }
 }

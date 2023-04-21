@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 public class Server {
     private ServerSocket server = null;
@@ -17,7 +18,6 @@ public class Server {
            while(true) {
                Socket client = server.accept();
                System.out.println("Client "+client+" connected.");
-
                new Thread(new ClientHandler(client, this)).start();
            }
 

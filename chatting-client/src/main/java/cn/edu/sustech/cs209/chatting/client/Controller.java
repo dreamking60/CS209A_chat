@@ -1,6 +1,7 @@
 package cn.edu.sustech.cs209.chatting.client;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
+import com.sun.javafx.charts.Legend;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -26,8 +27,9 @@ import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Controller implements Initializable {
+    public TextArea inputArea;
     private Socket client;
-    private String[] users;
+    String[] users;
     Chat chat;
     @FXML
     ListView<String> chatList;
@@ -91,12 +93,11 @@ public class Controller implements Initializable {
                 } while(flag);
 
                 client.getOutputStream().write(username.getBytes());
-                new Thread(new userClient(client, username)).start();
-
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
+            new Thread(new userClient(client, username, this)).start();
 
         } else {
             System.out.println("Invalid username " + input + ", exiting");
@@ -107,8 +108,6 @@ public class Controller implements Initializable {
         chatItems = FXCollections.observableArrayList();
         chatList.setItems(chatItems);
         chatContentList.setCellFactory(new MessageCellFactory());
-
-
 
     }
 
@@ -127,7 +126,6 @@ public class Controller implements Initializable {
         userSel.setPromptText("Select a user");
 
         // FIXME: get the user list from server, the current user's name should be filtered out
-        getUsers();
         userSel.getItems().addAll(Arrays.stream(users).filter(u -> !u.equals(username)).toArray(String[]::new));
 
         Button okBtn = new Button("OK");
@@ -173,6 +171,16 @@ public class Controller implements Initializable {
      */
     @FXML
     public void createGroupChat() {
+        // TODO
+        Stage stage = new Stage();
+        // set title
+        stage.setTitle("Create Group Chat");
+        // set size
+        stage.setWidth(300);
+        stage.setHeight(100);
+
+        ComboBox<String> userSel = new ComboBox<>();
+        userSel.setPromptText("Select users");
     }
 
     /**
@@ -184,7 +192,14 @@ public class Controller implements Initializable {
     @FXML
     public void doSendMessage() {
         // TODO
-
+        if (inputArea.getText().isBlank() || chat == null) {
+            return;
+        }
+        String msg = inputArea.getText();
+        Long timestamp = System.currentTimeMillis();
+        Send(msg);
+        chat.addMessage(timestamp, msg);
+        inputArea.clear();
     }
 
     /**
@@ -233,22 +248,27 @@ public class Controller implements Initializable {
     }
 
 
-
-    public void getUsers() {
+    public void Send(String msg) {
         try {
-            client.getOutputStream().write("GETUSERS:".getBytes());
-            InputStream in = client.getInputStream();
-            byte[] buf = new byte[1024];
-            int len = in.read(buf);
-            String userList = new String(buf, 0, len);
-            if(userList.startsWith("USERS:")){
-                userList = userList.substring(6);
-                users = userList.split(",");
-            }
-
+            String sendTo = chat.getParticipant2();
+            String msgContent = "MSG:" + sendTo + ":" + msg;
+            client.getOutputStream().write(msgContent.getBytes());
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void updateUsers(String[] users) {
+        this.users = users;
+    }
+
+    public void updateMsg(String sendBy, String msgBody) {
+        if(!chatItems.contains(sendBy)) {
+            chatItems.add(sendBy);
+            chats.add(new Chat(username, sendBy));
+        }
+        Long timestamp = System.currentTimeMillis();
+        chats.get(chatItems.indexOf(sendBy)).getMessages(timestamp, msgBody);
     }
 
 }
