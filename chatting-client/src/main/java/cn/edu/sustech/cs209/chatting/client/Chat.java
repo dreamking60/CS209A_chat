@@ -4,27 +4,45 @@ import cn.edu.sustech.cs209.chatting.common.Message;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
-public class Chat {
-    private String participant1;
-    private String participant2;
-    private ObservableList<Message> messages;
+import java.util.List;
 
-    public Chat(String participant1, String participant2) {
-        this.participant1 = participant1;
-        this.participant2 = participant2;
+public class Chat {
+    private String clientUser;
+    private String chatName;
+    private ObservableList<Message> messages;
+    private List<String> participant;
+
+    public boolean isGroupChat = false;
+
+    public Chat(String clientUser, String chatName) {
+        this.clientUser = clientUser;
+        this.chatName = chatName;
         messages = FXCollections.observableArrayList();
     }
 
-    public String getParticipant1() {
-        return participant1;
+    public Chat(String clientUser, String chatName, List<String> participant) {
+        this.clientUser = clientUser;
+        this.chatName = chatName;
+        this.participant = participant;
+        messages = FXCollections.observableArrayList();
+        isGroupChat = true;
     }
 
-    public String getParticipant2() {
-        return participant2;
+
+    public String getClientUser() {
+        return clientUser;
+    }
+
+    public String getChatName() {
+        return chatName;
     }
 
     public ObservableList<Message> getMessages() {
         return messages;
+    }
+
+    public List<String> getParticipant() {
+        return participant;
     }
 
     public void addMessage(Message message) {
@@ -32,10 +50,14 @@ public class Chat {
     }
 
     public void addMessage(Long timestamp, String data) {
-        messages.add(new Message(timestamp, participant1, participant2, data));
+        messages.add(new Message(timestamp, clientUser, chatName, data));
     }
 
     public void getMessages(Long timestamp, String data) {
-        messages.add(new Message(timestamp, participant2, participant1, data));
+        messages.add(new Message(timestamp, chatName, clientUser, data));
+    }
+
+    public void getMessages(Long timestamp, String data, String sendBy) {
+        messages.add(new Message(timestamp, sendBy, chatName, data));
     }
 }

@@ -1,7 +1,6 @@
 package cn.edu.sustech.cs209.chatting.client;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
-import com.sun.javafx.charts.Legend;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -20,14 +19,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Controller implements Initializable {
     public TextArea inputArea;
+    public Label currentUsername;
     private Socket client;
     String[] users;
     Chat chat;
@@ -79,35 +76,46 @@ public class Controller implements Initializable {
                     }
                     if(!flag) {
                         break;
-                    }
-
-                    dialog.setContentText("Username already exists. Please choose another username:");
-                    Optional<String> reInput = dialog.showAndWait();
-                    if (reInput.isPresent() && !reInput.get().isEmpty()) {
-                        username = reInput.get();
                     } else {
-                        System.out.println("Invalid username " + reInput + ", exiting");
-                        Platform.exit();
+                        dialog.setContentText("Username already exists. Please choose another username:");
+                        Optional<String> reInput = dialog.showAndWait();
+                        if (reInput.isPresent() && !reInput.get().isEmpty()) {
+                            username = reInput.get();
+                        } else {
+                            System.out.println("Invalid username " + reInput + ", exiting");
+                            Platform.exit();
+                            break;
+                        }
                     }
 
                 } while(flag);
 
+                currentUsername.setText(username);
                 client.getOutputStream().write(username.getBytes());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
-            new Thread(new userClient(client, username, this)).start();
+            // msg Listener
+            Thread msgListener = new Thread(new userClient(client, username, this));
+            msgListener.setDaemon(true);
+            msgListener.start();
+
+            // chatList Listener
+            chatListListener();
+
+            // chat and chatContent
+            chats = FXCollections.observableArrayList();
+            chatItems = FXCollections.observableArrayList();
+            chatList.setItems(chatItems);
+            chatContentList.setCellFactory(new MessageCellFactory());
 
         } else {
             System.out.println("Invalid username " + input + ", exiting");
             Platform.exit();
         }
 
-        chats = FXCollections.observableArrayList();
-        chatItems = FXCollections.observableArrayList();
-        chatList.setItems(chatItems);
-        chatContentList.setCellFactory(new MessageCellFactory());
+
 
     }
 
@@ -152,10 +160,7 @@ public class Controller implements Initializable {
             chats.add(new Chat(username, chooseUser));
         }
         selectedUser = chooseUser;
-        chatList.getSelectionModel().select(chooseUser);
-        chat = chats.get(chatItems.indexOf(chooseUser));
-        chatContentItem = chat.getMessages();
-        chatContentList.setItems(chatContentItem);
+        chatList.getSelectionModel().select(selectedUser);
 
     }
 
@@ -170,18 +175,87 @@ public class Controller implements Initializable {
      * UserA, UserB (2)
      */
     @FXML
-    public void createGroupChat() {
-        // TODO
+    public void createGroupChat() throws IOException, InterruptedException {
         Stage stage = new Stage();
         // set title
         stage.setTitle("Create Group Chat");
         // set size
         stage.setWidth(300);
-        stage.setHeight(100);
+        stage.setHeight(350);
 
-        ComboBox<String> userSel = new ComboBox<>();
-        userSel.setPromptText("Select users");
+        Label userLabel = new Label("Select users to add to the group:");
+        VBox userBox = new VBox(10, userLabel);
+
+        List<CheckBox> checkBoxList = new ArrayList<>();
+
+        for (String user : users) {
+            if (!user.equals(username)) {
+                CheckBox checkBox = new CheckBox(user);
+                checkBoxList.add(checkBox);
+                userBox.getChildren().add(checkBox);
+            }
+        }
+
+        TextArea groupNameField = new TextArea();
+        groupNameField.setPromptText("Enter group name");
+        groupNameField.setWrapText(true);
+        groupNameField.setPrefRowCount(2);
+        VBox nameBox = new VBox(10, new Label("Group name:"), groupNameField);
+
+        Button okBtn = new Button("OK");
+        okBtn.setOnAction(e -> {
+            List<String> selectedUsers = new ArrayList<>();
+            for (CheckBox checkBox : checkBoxList) {
+                if (checkBox.isSelected()) {
+                    selectedUsers.add(checkBox.getText());
+                }
+            }
+            selectedUsers.add(username);
+            String groupName = groupNameField.getText().trim();
+            if (groupName.isEmpty()) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error");
+                alert.setContentText("Group name cannot be empty");
+                alert.showAndWait();
+                return;
+            }
+            stage.close();
+            if (selectedUsers.size() > 2) {
+                newGroupChat(groupName, selectedUsers);
+            }
+        });
+
+        HBox btnBox = new HBox(10, okBtn);
+        btnBox.setAlignment(Pos.CENTER);
+
+        VBox box = new VBox(10, userBox, nameBox, btnBox);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(20, 20, 20, 20));
+        stage.setScene(new Scene(box));
+        stage.showAndWait();
+
+
     }
+
+    private void newGroupChat(String groupName, List<String> users) {
+        // Check if the group chat already exist
+        for (Chat chat : chats) {
+            if (chat.getChatName().equals(groupName)) {
+                // If the group chat already exist, select the existing chat in the chat list
+                selectedUser = groupName;
+                chatList.getSelectionModel().select(selectedUser);
+                return;
+            }
+        }
+
+        // If the group chat does not exist, create a new chat item in the left panel, the title should be the group name
+        chatItems.add(groupName);
+        chats.add(new Chat(username, groupName, users));
+
+        selectedUser = groupName;
+        chatList.getSelectionModel().select(groupName);
+    }
+
 
     /**
      * Sends the message to the <b>currently selected</b> chat.
@@ -197,7 +271,11 @@ public class Controller implements Initializable {
         }
         String msg = inputArea.getText();
         Long timestamp = System.currentTimeMillis();
-        Send(msg);
+        if(chat.isGroupChat) {
+            SendGroupMessage(msg);
+        } else {
+            Send(msg);
+        }
         chat.addMessage(timestamp, msg);
         inputArea.clear();
     }
@@ -247,11 +325,44 @@ public class Controller implements Initializable {
         chatItems.add(chatRecord);
     }
 
+    public void chatListListener() {
+        chatList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                selectedUser = newValue;
+                chat = chats.get(chatItems.indexOf(newValue));
+                chatContentItem = chat.getMessages();
+                chatContentList.setItems(null);
+                chatContentList.setItems(chatContentItem);
+                //updateListViewSize(chatContentList);
+            }
+        });
+    }
 
+//    private void updateListViewSize(ListView listView) {
+//        listView.setPrefHeight(Control.USE_COMPUTED_SIZE);
+//        listView.setMaxHeight(Control.USE_COMPUTED_SIZE);
+//        listView.setMinHeight(Control.USE_COMPUTED_SIZE);
+//    }
+
+    // send to a user
     public void Send(String msg) {
         try {
-            String sendTo = chat.getParticipant2();
+            String sendTo = chat.getChatName();
             String msgContent = "MSG:" + sendTo + ":" + msg;
+            client.getOutputStream().write(msgContent.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // send to a group
+    private void SendGroupMessage(String msg) {
+        try {
+            String sendToGroup = chat.getChatName();
+            String sendToParticipant = String.join(",", chat.getParticipant());
+            String sendBy = username;
+            String msgContent = "GRP:" + sendBy + ":" + sendToGroup + ":" + sendToParticipant + ":" + msg;
+
             client.getOutputStream().write(msgContent.getBytes());
         } catch (IOException e) {
             e.printStackTrace();
@@ -269,6 +380,15 @@ public class Controller implements Initializable {
         }
         Long timestamp = System.currentTimeMillis();
         chats.get(chatItems.indexOf(sendBy)).getMessages(timestamp, msgBody);
+    }
+
+    public void updateMsg(String sendBy, String msgBody, String sendToGroup, String[] participant) {
+        if(!chatItems.contains(sendToGroup)) {
+            chatItems.add(sendToGroup);
+            chats.add(new Chat(username, sendToGroup, Arrays.stream(participant).toList()));
+        }
+        Long timestamp = System.currentTimeMillis();
+        chats.get(chatItems.indexOf(sendToGroup)).getMessages(timestamp, msgBody, sendBy);
     }
 
 }

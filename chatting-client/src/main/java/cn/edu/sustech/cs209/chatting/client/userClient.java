@@ -51,6 +51,12 @@ public class userClient implements Runnable {
                 users = userList.split(",");
                 Platform.runLater(() -> controller.updateUsers(users));
 
+            } else if(Head.equals("GRP")) {
+                String sendBy = msg.split(":")[1];
+                String sendToGroup = msg.split(":")[2];
+                String[] participant = msg.split(":")[3].split(",");
+                String msgBody = msg.substring(4+sendBy.length()+1+sendToGroup.length()+1+msg.split(":")[3].length()+1);
+                Platform.runLater(() -> controller.updateMsg(sendBy, msgBody, sendToGroup, participant));
             }
 
             return true;

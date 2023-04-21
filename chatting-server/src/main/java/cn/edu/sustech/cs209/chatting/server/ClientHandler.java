@@ -49,7 +49,10 @@ public class ClientHandler implements Runnable{
             System.out.println("ClientHandler Error.");
         } finally {
             try {
-                server.getClientList().remove(clientId);
+                if(client.equals(server.getClientList().get(clientId))) {
+                    server.getClientList().remove(clientId);
+                    updateUserList();
+                }
                 client.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -61,9 +64,9 @@ public class ClientHandler implements Runnable{
     public boolean sendMessage(String msg) {
         try {
             String Head = msg.split(":")[0];
-            if(Head.equals("MSG")) {
-                String targetClientId =  msg.split(":")[1];
-                String msgBody = msg.substring(4+targetClientId.length()+1);
+            if (Head.equals("MSG")) {
+                String targetClientId = msg.split(":")[1];
+                String msgBody = msg.substring(4 + targetClientId.length() + 1);
                 String msgContent = "MSG:" + clientId + ":" + msgBody;
 
                 Socket targetClient = server.getClientList().get(targetClientId);
@@ -73,6 +76,26 @@ public class ClientHandler implements Runnable{
                 }
                 OutputStream out = targetClient.getOutputStream();
                 out.write(msgContent.getBytes());
+            } else if(Head.equals("GRP")) {
+                String msgBody = msg.substring(4);
+                // Get users in the group
+                String[] users = msgBody.split(":")[2].split(",");
+                // send msg to users
+                for(String user : users) {
+                    if(user.equals(clientId)) {
+                        continue;
+                    }
+                    Socket targetClient = server.getClientList().get(user);
+                    if (targetClient == null) {
+                        System.out.println("Target Client Not Found.");
+                        continue;
+                    }
+                    OutputStream out = targetClient.getOutputStream();
+                    out.write(msg.getBytes());
+                    System.out.println("Send to " + user);
+                }
+
+
             } else if(Head.equals("GETUSERS")) {
                 String usersStr = server.getClientList().keySet().stream().collect(Collectors.joining(","));
                 String msgContent = "USERS:" + usersStr;
