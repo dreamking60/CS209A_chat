@@ -57,6 +57,11 @@ public class userClient implements Runnable {
                 String[] participant = msg.split(":")[3].split(",");
                 String msgBody = msg.substring(4+sendBy.length()+1+sendToGroup.length()+1+msg.split(":")[3].length()+1);
                 Platform.runLater(() -> controller.updateMsg(sendBy, msgBody, sendToGroup, participant));
+
+            } else if(Head.equals("USER")) {
+                String sendBy = msg.split(":")[1];
+                String cond = msg.split(":")[2];
+
             }
 
             return true;

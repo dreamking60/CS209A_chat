@@ -219,10 +219,15 @@ public class Controller implements Initializable {
                 alert.showAndWait();
                 return;
             }
-            stage.close();
-            if (selectedUsers.size() > 2) {
-                newGroupChat(groupName, selectedUsers);
+            if(selectedUsers.size() <= 2) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error");
+                alert.setContentText("Group must have at least 3 users");
+                alert.showAndWait();
+                return;
             }
+            stage.close();
+            newGroupChat(groupName, selectedUsers);
         });
 
         HBox btnBox = new HBox(10, okBtn);
@@ -237,6 +242,7 @@ public class Controller implements Initializable {
 
     }
 
+    // create a new group chat
     private void newGroupChat(String groupName, List<String> users) {
         // Check if the group chat already exist
         for (Chat chat : chats) {
@@ -253,7 +259,7 @@ public class Controller implements Initializable {
         chats.add(new Chat(username, groupName, users));
 
         selectedUser = groupName;
-        chatList.getSelectionModel().select(groupName);
+        chatList.getSelectionModel().select(selectedUser);
     }
 
 
@@ -276,7 +282,7 @@ public class Controller implements Initializable {
         } else {
             Send(msg);
         }
-        chat.addMessage(timestamp, msg);
+        chats.get(chatItems.indexOf(selectedUser)).addMessage(timestamp, msg);
         inputArea.clear();
     }
 
@@ -293,6 +299,13 @@ public class Controller implements Initializable {
                 public void updateItem(Message msg, boolean empty) {
                     super.updateItem(msg, empty);
                     if (empty || Objects.isNull(msg)) {
+                        setText(null);
+                        setGraphic(null);
+                        return;
+                    }
+
+                    ObservableList<Message> chatContentItem = getListView().getItems(); // 获取当前的chatContentItem
+                    if (!chatContentItem.contains(msg)) { // 检查新的消息是否在chatContentItem中
                         return;
                     }
 
@@ -321,30 +334,22 @@ public class Controller implements Initializable {
         }
     }
 
-    public void addChatRecord(String chatRecord) {
-        chatItems.add(chatRecord);
-    }
-
+    // update chat content
     public void chatListListener() {
         chatList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
                 selectedUser = newValue;
                 chat = chats.get(chatItems.indexOf(newValue));
                 chatContentItem = chat.getMessages();
-                chatContentList.setItems(null);
+                chatContentList.setItems(FXCollections.observableArrayList());
+                chatContentList.getItems().clear();
                 chatContentList.setItems(chatContentItem);
-                //updateListViewSize(chatContentList);
+                chatContentList.scrollTo(chatContentItem.size() - 1);
             }
         });
     }
 
-//    private void updateListViewSize(ListView listView) {
-//        listView.setPrefHeight(Control.USE_COMPUTED_SIZE);
-//        listView.setMaxHeight(Control.USE_COMPUTED_SIZE);
-//        listView.setMinHeight(Control.USE_COMPUTED_SIZE);
-//    }
-
-    // send to a user
+    // send msg to a user
     public void Send(String msg) {
         try {
             String sendTo = chat.getChatName();
@@ -355,7 +360,7 @@ public class Controller implements Initializable {
         }
     }
 
-    // send to a group
+    // send msg to a group
     private void SendGroupMessage(String msg) {
         try {
             String sendToGroup = chat.getChatName();
@@ -369,10 +374,18 @@ public class Controller implements Initializable {
         }
     }
 
+    // update user list
     public void updateUsers(String[] users) {
         this.users = users;
+        for(String user : users) {
+            if(!chatItems.contains(user) && !user.equals(username)) {
+                chatItems.add(user);
+                chats.add(new Chat(username, user));
+            }
+        }
     }
 
+    // update one-to-one chat message
     public void updateMsg(String sendBy, String msgBody) {
         if(!chatItems.contains(sendBy)) {
             chatItems.add(sendBy);
@@ -382,6 +395,7 @@ public class Controller implements Initializable {
         chats.get(chatItems.indexOf(sendBy)).getMessages(timestamp, msgBody);
     }
 
+    // update group chat message
     public void updateMsg(String sendBy, String msgBody, String sendToGroup, String[] participant) {
         if(!chatItems.contains(sendToGroup)) {
             chatItems.add(sendToGroup);
