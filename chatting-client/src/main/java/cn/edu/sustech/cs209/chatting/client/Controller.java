@@ -40,83 +40,90 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        getUsername();
+        getAndCheckUserList();
+        currentUsername.setText(username);
+        openListener();
+        setupChatInterface();
+    }
 
+    public void getUsername() {
         Dialog<String> dialog = new TextInputDialog();
         dialog.setTitle("Login");
         dialog.setHeaderText(null);
         dialog.setContentText("Username:");
 
         Optional<String> input = dialog.showAndWait();
-        if (input.isPresent() && !input.get().isEmpty()) {
-            /*
-               TODO: Check if there is a user with the same name among the currently logged-in users,
-                     if so, ask the user to change the username
-             */
-
+        if(input.isPresent() && !input.get().isEmpty()) {
             username = input.get();
-            try {
-                client = new Socket("127.0.0.1", 16000);
-
-                // get user list
-                InputStream in = client.getInputStream();
-                byte[] buf = new byte[1024];
-                int len = in.read(buf);
-                String userList = new String(buf, 0, len);
-                if(userList.startsWith("USERS:")){
-                    userList = userList.substring(6);
-                    users = userList.split(",");
-                }
-                System.out.println(Arrays.toString(users));
-
-                // check if username is in the list
-                boolean flag = false;
-                do {
-                    if(users != null) {
-                        flag = Arrays.stream(users).anyMatch(user -> user.equals(username));
-                    }
-                    if(!flag) {
-                        break;
-                    } else {
-                        dialog.setContentText("Username already exists. Please choose another username:");
-                        Optional<String> reInput = dialog.showAndWait();
-                        if (reInput.isPresent() && !reInput.get().isEmpty()) {
-                            username = reInput.get();
-                        } else {
-                            System.out.println("Invalid username " + reInput + ", exiting");
-                            Platform.exit();
-                            break;
-                        }
-                    }
-
-                } while(flag);
-
-                currentUsername.setText(username);
-                client.getOutputStream().write(username.getBytes());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-            // msg Listener
-            Thread msgListener = new Thread(new userClient(client, username, this));
-            msgListener.setDaemon(true);
-            msgListener.start();
-
-            // chatList Listener
-            chatListListener();
-
-            // chat and chatContent
-            chats = FXCollections.observableArrayList();
-            chatItems = FXCollections.observableArrayList();
-            chatList.setItems(chatItems);
-            chatContentList.setCellFactory(new MessageCellFactory());
-
         } else {
-            System.out.println("Invalid username " + input + ", exiting");
+            System.out.println("Invalid username, exiting");
             Platform.exit();
         }
 
+    }
 
+    public void getAndCheckUserList() {
+        try {
+            client = new Socket("127.0.0.1", 16000);
 
+            // get user list
+            InputStream in = client.getInputStream();
+            byte[] buf = new byte[1024];
+            int len = in.read(buf);
+            String userList = new String(buf, 0, len);
+            if(userList.startsWith("USERS:")){
+                userList = userList.substring(6);
+                users = userList.split(",");
+            }
+            System.out.println(Arrays.toString(users));
+
+            // check if username is in the list
+            boolean flag = false;
+            do {
+                if(users != null) {
+                    flag = Arrays.stream(users).anyMatch(user -> user.equals(username));
+                }
+                if(!flag) {
+                    break;
+                } else {
+                    Dialog<String> dialog = new TextInputDialog();
+                    dialog.setTitle("Login");
+                    dialog.setHeaderText(null);
+                    dialog.setContentText("Username already exists. Please choose another username:");
+                    Optional<String> reInput = dialog.showAndWait();
+                    if (reInput.isPresent() && !reInput.get().isEmpty()) {
+                        username = reInput.get();
+                    } else {
+                        System.out.println("Invalid username " + reInput + ", exiting");
+                        Platform.exit();
+                        break;
+                    }
+                }
+
+            } while(flag);
+
+            client.getOutputStream().write(username.getBytes());
+        } catch (IOException e) {
+            System.out.println("No username.");
+        }
+
+    }
+    public void openListener() {
+        // msg Listener
+        Thread msgListener = new Thread(new userClient(client, username, this));
+        msgListener.setDaemon(true);
+        msgListener.start();
+
+        // chatList Listener
+        chatListListener();
+    }
+
+    public void setupChatInterface() {
+        chats = FXCollections.observableArrayList();
+        chatItems = FXCollections.observableArrayList();
+        chatList.setItems(chatItems);
+        chatContentList.setCellFactory(new MessageCellFactory());
     }
 
     @FXML

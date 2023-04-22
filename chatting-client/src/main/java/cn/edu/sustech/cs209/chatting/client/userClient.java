@@ -34,7 +34,7 @@ public class userClient implements Runnable {
 
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Client Error");
         }
     }
 
