@@ -4,6 +4,7 @@ import cn.edu.sustech.cs209.chatting.common.Message;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -312,6 +313,11 @@ public class Controller implements Initializable {
         }
         chats.get(chatItems.indexOf(selectedUser)).addMessage(timestamp, msg);
         inputArea.clear();
+    }
+
+    @FXML
+    public void uploadFile(ActionEvent actionEvent) {
+        // TODO: upload File
     }
 
     /**
