@@ -12,17 +12,21 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.media.MediaPlayer;
 import javafx.stage.Stage;
+import javafx.scene.media.Media;
 import javafx.util.Callback;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Controller implements Initializable {
+    private MediaPlayer mediaPlayer;
     public TextArea inputArea;
     public Label currentUsername;
     @FXML
@@ -477,6 +481,10 @@ public class Controller implements Initializable {
         }
         Long timestamp = System.currentTimeMillis();
         chats.get(chatItems.indexOf(sendBy)).getMessages(timestamp, msgBody);
+
+        // play ringtone
+        RingPlay();
+
     }
 
     // update group chat message
@@ -487,6 +495,26 @@ public class Controller implements Initializable {
         }
         Long timestamp = System.currentTimeMillis();
         chats.get(chatItems.indexOf(sendToGroup)).getMessages(timestamp, msgBody, sendBy);
+
+        // play ringtone
+        RingPlay();
+    }
+
+    private void RingPlay() {
+        try {
+            String mediaFile = getClass().getResource("msg.mp3").toURI().toString();
+            Media media = new Media(mediaFile);
+            mediaPlayer = new MediaPlayer(media);
+            mediaPlayer.setOnEndOfMedia(() -> {
+                mediaPlayer.stop();
+                mediaPlayer.dispose();
+            });
+            mediaPlayer.play();
+        } catch (URISyntaxException e) {
+            System.out.println("Ring file syntax error");
+        } catch (NullPointerException e) {
+            System.out.println("Ring file not found");
+        }
     }
 
     public void serverClose() {
