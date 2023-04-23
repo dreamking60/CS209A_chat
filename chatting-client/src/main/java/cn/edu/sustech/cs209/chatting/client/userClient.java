@@ -61,7 +61,17 @@ public class userClient implements Runnable {
             } else if(Head.equals("USER")) {
                 String sendBy = msg.split(":")[1];
                 String cond = msg.split(":")[2];
+                if(cond.equals("login")) {
+                    Platform.runLater(() -> controller.userLogin(sendBy));
+                } else if(cond.equals("logout")) {
+                    Platform.runLater(() -> controller.userLogout(sendBy));
+                }
 
+            } else if(Head.equals("SERVER")) {
+                String cond = msg.split(":")[1];
+                if(cond.equals("close")) {
+                    Platform.runLater(() -> controller.serverClose());
+                }
             }
 
             return true;

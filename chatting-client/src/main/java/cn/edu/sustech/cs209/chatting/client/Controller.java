@@ -25,8 +25,13 @@ import java.util.concurrent.atomic.AtomicReference;
 public class Controller implements Initializable {
     public TextArea inputArea;
     public Label currentUsername;
+    @FXML
+    ListView<String> onlineList;
+    @FXML
+    ListView<String> groupList;
+    private ObservableList<String> groupItems;
     private Socket client;
-    String[] users;
+    ObservableList<String> users;
     Chat chat;
     @FXML
     ListView<String> chatList;
@@ -48,6 +53,9 @@ public class Controller implements Initializable {
     }
 
     public void getUsername() {
+        users = FXCollections.observableArrayList();
+        groupItems = FXCollections.observableArrayList();
+
         Dialog<String> dialog = new TextInputDialog();
         dialog.setTitle("Login");
         dialog.setHeaderText(null);
@@ -74,15 +82,15 @@ public class Controller implements Initializable {
             String userList = new String(buf, 0, len);
             if(userList.startsWith("USERS:")){
                 userList = userList.substring(6);
-                users = userList.split(",");
+                users.addAll(userList.split(","));
             }
-            System.out.println(Arrays.toString(users));
+            System.out.println(users);
 
             // check if username is in the list
             boolean flag = false;
             do {
-                if(users != null) {
-                    flag = Arrays.stream(users).anyMatch(user -> user.equals(username));
+                if(users != null && !users.isEmpty()) {
+                    flag = users.stream().anyMatch(user -> user.equals(username));
                 }
                 if(!flag) {
                     break;
@@ -105,7 +113,11 @@ public class Controller implements Initializable {
 
             client.getOutputStream().write(username.getBytes());
         } catch (IOException e) {
-            System.out.println("No username.");
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setContentText("Server is offline");
+            alert.showAndWait();
+            Platform.exit();
         }
 
     }
@@ -124,6 +136,11 @@ public class Controller implements Initializable {
         chatItems = FXCollections.observableArrayList();
         chatList.setItems(chatItems);
         chatContentList.setCellFactory(new MessageCellFactory());
+
+        onlineList.setItems(users);
+        onlineList.setCellFactory(new userCellFactory());
+        groupList.setItems(groupItems);
+        groupList.setCellFactory(new userCellFactory());
     }
 
     @FXML
@@ -141,7 +158,7 @@ public class Controller implements Initializable {
         userSel.setPromptText("Select a user");
 
         // FIXME: get the user list from server, the current user's name should be filtered out
-        userSel.getItems().addAll(Arrays.stream(users).filter(u -> !u.equals(username)).toArray(String[]::new));
+        userSel.getItems().addAll(users.stream().filter(u -> !u.equals(username)).toArray(String[]::new));
 
         Button okBtn = new Button("OK");
         okBtn.setOnAction(e -> {
@@ -341,6 +358,37 @@ public class Controller implements Initializable {
         }
     }
 
+    private class userCellFactory implements Callback<ListView<String>, ListCell<String>> {
+        @Override
+        public ListCell<String> call(ListView<String> param) {
+            return new ListCell<String>() {
+
+                @Override
+                public void updateItem(String user, boolean empty) {
+                    super.updateItem(user, empty);
+                    if (empty || Objects.isNull(user)) {
+                        setText(null);
+                        setGraphic(null);
+                        return;
+                    }
+
+                    HBox wrapper = new HBox();
+                    Label nameLabel = new Label(user);
+
+                    nameLabel.setPrefSize(50, 20);
+                    nameLabel.setWrapText(true);
+                    //nameLabel.setStyle("-fx-border-color: black; -fx-border-width: 1px;");
+
+                    wrapper.setAlignment(Pos.TOP_LEFT);
+                    wrapper.getChildren().addAll(nameLabel);
+
+                    setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+                    setGraphic(wrapper);
+                }
+            };
+        }
+    }
+
     // update chat content
     public void chatListListener() {
         chatList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
@@ -352,6 +400,15 @@ public class Controller implements Initializable {
                 chatContentList.getItems().clear();
                 chatContentList.setItems(chatContentItem);
                 chatContentList.scrollTo(chatContentItem.size() - 1);
+                if(chat.isGroupChat) {
+                    groupItems = chat.getParticipant();
+                    groupList.setItems(FXCollections.observableArrayList());
+                    groupList.getItems().clear();
+                    groupList.setItems(groupItems);
+                } else {
+                    groupList.setItems(FXCollections.observableArrayList());
+                    groupList.getItems().clear();
+                }
             }
         });
     }
@@ -383,11 +440,31 @@ public class Controller implements Initializable {
 
     // update user list
     public void updateUsers(String[] users) {
-        this.users = users;
+        this.users.clear();
+        this.users.addAll(Arrays.asList(users));
         for(String user : users) {
             if(!chatItems.contains(user) && !user.equals(username)) {
                 chatItems.add(user);
                 chats.add(new Chat(username, user));
+            }
+        }
+    }
+
+    public void userLogin(String user) {
+        if(!chatItems.contains(user) && !user.equals(username)) {
+            users.add(user);
+            chatItems.add(user);
+            chats.add(new Chat(username, user));
+        }
+    }
+
+    public void userLogout(String user) {
+        if (!user.equals(username)) {
+            users.remove(user);
+            for (Chat chat : chats) {
+                if (chat.isGroupChat) {
+                    chat.getParticipant().remove(user);
+                }
             }
         }
     }
@@ -410,6 +487,33 @@ public class Controller implements Initializable {
         }
         Long timestamp = System.currentTimeMillis();
         chats.get(chatItems.indexOf(sendToGroup)).getMessages(timestamp, msgBody, sendBy);
+    }
+
+    public void serverClose() {
+        updateUsers(new String[]{username});
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Server Close");
+        alert.setHeaderText("The server is closing, do you like to keep the client running?");
+        // Two Button
+        ButtonType buttonTypeYes = new ButtonType("Yes");
+        ButtonType buttonTypeClose = new ButtonType("Close");
+
+        alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeClose);
+
+        // Add event listener
+        Button buttonYes = (Button) alert.getDialogPane().lookupButton(buttonTypeYes);
+        buttonYes.setOnAction(event -> {
+            System.out.println("client continue running");
+            alert.close();
+        });
+
+        Button buttonClose = (Button) alert.getDialogPane().lookupButton(buttonTypeClose);
+        buttonClose.setOnAction(event -> {
+            System.out.println("client close");
+            System.exit(0);
+        });
+
+        alert.showAndWait();
     }
 
 }

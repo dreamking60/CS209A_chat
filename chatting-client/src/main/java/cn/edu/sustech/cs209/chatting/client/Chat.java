@@ -10,7 +10,8 @@ public class Chat {
     private String clientUser;
     private String chatName;
     private ObservableList<Message> messages;
-    private List<String> participant;
+    private ObservableList<String> participant;
+    private List<String> members;
 
     public boolean isGroupChat = false;
 
@@ -23,7 +24,9 @@ public class Chat {
     public Chat(String clientUser, String chatName, List<String> participant) {
         this.clientUser = clientUser;
         this.chatName = chatName;
-        this.participant = participant;
+        this.members = participant;
+        this.participant = FXCollections.observableArrayList();
+        this.participant.addAll(participant);
         messages = FXCollections.observableArrayList();
         isGroupChat = true;
     }
@@ -41,7 +44,7 @@ public class Chat {
         return messages;
     }
 
-    public List<String> getParticipant() {
+    public ObservableList<String> getParticipant() {
         return participant;
     }
 

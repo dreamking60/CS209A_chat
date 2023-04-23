@@ -51,7 +51,7 @@ public class ClientHandler implements Runnable{
             try {
                 if(client.equals(server.getClientList().get(clientId))) {
                     server.getClientList().remove(clientId);
-                    updateUserList();
+                    userLogout();
                 }
                 client.close();
             } catch (IOException e) {
@@ -102,7 +102,7 @@ public class ClientHandler implements Runnable{
                 System.out.println(msgContent);
                 OutputStream out = client.getOutputStream();
                 out.write(msgContent.getBytes());
-            } else if(Head.equals("LOGOUT")) {
+            } else if(Head.equals("USER:logout")) {
                 server.getClientList().remove(clientId);
                 client.close();
             }
@@ -112,6 +112,32 @@ public class ClientHandler implements Runnable{
             System.out.println("Send Message Error.");
             return false;
         }
+    }
+
+    private void userLogin() {
+        HashMap<String, Socket> clientList = server.getClientList();
+        String msg = "USER:" + clientId + ":login";
+        System.out.println(msg);
+        clientList.forEach((k, v) -> {
+            try {
+                v.getOutputStream().write(msg.getBytes());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    public void userLogout() {
+        HashMap<String, Socket> clientList = server.getClientList();
+        String msg = "USER:" + clientId + ":logout";
+        System.out.println(msg);
+        clientList.forEach((k, v) -> {
+            try {
+                v.getOutputStream().write(msg.getBytes());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     private void updateUserList() {

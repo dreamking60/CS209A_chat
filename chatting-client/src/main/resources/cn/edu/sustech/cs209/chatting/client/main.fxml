@@ -15,6 +15,7 @@
 <?import javafx.scene.paint.Color?>
 <?import javafx.scene.text.Font?>
 
+<?import javafx.scene.control.skin.SplitPaneSkin.ContentDivider?>
 <VBox prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="cn.edu.sustech.cs209.chatting.client.Controller">
     <MenuBar VBox.vgrow="NEVER">
@@ -24,14 +25,20 @@
         </Menu>
     </MenuBar>
     <SplitPane dividerPositions="0.25" focusTraversable="true" VBox.vgrow="ALWAYS">
-        <ListView fx:id="chatList" prefHeight="200.0" prefWidth="200.0"/>
-        <SplitPane dividerPositions="0.85" orientation="VERTICAL" prefHeight="200.0" prefWidth="160.0">
-            <ListView fx:id="chatContentList" prefHeight="200.0" prefWidth="200.0"/>
-            <HBox prefHeight="100.0" prefWidth="200.0">
-                <TextArea fx:id="inputArea" prefHeight="138.0" prefWidth="624.0" HBox.hgrow="ALWAYS"/>
-                <Button maxHeight="1.7976931348623157E308" mnemonicParsing="false" onAction="#doSendMessage"
-                        text="Send" HBox.hgrow="ALWAYS"/>
-            </HBox>
+        <ListView fx:id="chatList" prefHeight="200.0" prefWidth="150.0"/>
+            <SplitPane dividerPositions="0.75" focusTraversable="true" VBox.vgrow="ALWAYS">
+            <SplitPane dividerPositions="0.85" orientation="VERTICAL" prefHeight="200.0" prefWidth="500.0">
+                <ListView fx:id="chatContentList" prefHeight="200.0" prefWidth="200.0"/>
+                <HBox prefHeight="100.0" prefWidth="200.0">
+                    <TextArea fx:id="inputArea" prefHeight="138.0" prefWidth="400.0" HBox.hgrow="ALWAYS"/>
+                    <Button maxHeight="1.7976931348623157E308" prefWidth="50" mnemonicParsing="false" onAction="#doSendMessage"
+                            text="Send" HBox.hgrow="ALWAYS"/>
+                </HBox>
+            </SplitPane>
+            <SplitPane dividerPositions="0.5" orientation="VERTICAL" prefHeight="200" prefWidth="100">
+                <ListView fx:id="onlineList" prefHeight="100.0" prefWidth="150.0"/>
+                <ListView fx:id="groupList" prefHeight="100.0" prefWidth="150.0"/>
+            </SplitPane>
         </SplitPane>
     </SplitPane>
     <HBox id="HBox" alignment="CENTER_LEFT" spacing="5.0" VBox.vgrow="NEVER">
