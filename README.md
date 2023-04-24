@@ -1,93 +1,33 @@
-# 🫧 Chatting
+# CS209 ASS 2
+worked by 11910507
+## Model
+通信部分，采用server-client模型。
+GUI部分，采用了javafx，爲了增加提示音的功能，還使用了javafx-media。
 
-![CourseInfo](https://img.shields.io/badge/sustech--cs209-23sp%3Aassign2-brightgreen)
-![License](https://img.shields.io/github/license/hezean/chatting)
+## GUI
+窗口分为上中下三个部分。
 
-**Chatting** is a simple online-chat application, based on JavaFX and Socket.
-In this assignment, you will need to implement a WeChat like program, but much simpler.
+窗口的上部分是按钮，只有私人聊天和群组聊天两个按钮，功能已完全实现。
+- 私人聊天能够创建与某个在线用户的聊天，如果已存在聊天列表，则会消息窗口会跳转到对应的对话中；
+- 群组聊天能够创建与至少两个其他用户的在线用户聊提案，如果少于两个则无法创建，需要设置群组名，群组名为空无法创建。群组以群组名为唯一识别标识。
 
-## Quickstart
+窗口的中部分是消息窗口，分爲左中右三個部分。  
+- 左边显示的是消息列表chatList，为了方便测试，采用了当新用户加入后默认加入消息列表的设计，这样不需要点击私人聊天按钮，节约时间。实现了点击某个chat即可跳转到某个对话窗口的功能。
+- 中间显示为上下两部分。
+  - 上边是chatContentList，消息的列表，会根据发送人，发送信息，逐行显示消息。
+  - 下边是发送信息的输入框和send发送按钮（upload按钮实现），发送后会清空输入框，发送到当前对话窗口的对应chat。
+- 右边显示为上下两部分。
+  - 上边维护一个users，表示实时在线用户
+  - 下边维护一个groupUsreList, 表示当前群组的在线用户。
 
-Click the [use template](https://github.com/hezean/chatting/generate) to create a fork of this template - to avoid potential plagiarism dispute,
-**please be sure that your repository is made _private_ before the deadline**.
+## 通信
+通信采用server-client模型，使用socket进行通信，并使用了自己设计的若干报文，由于是作业且考虑到个人的时间不充足，所有的保文实现都类似于udp的形式，没有做任何的防止报文丢失的设计，同时也不对报文的内容进行任何检查，仅根据报文格式进行处理。
 
-> We also provide you a template with `lombok` that makes your code shorter and more elegant.
-> To use that, make sure you've checked the **Include all branches** option when creating your fork.
-> Then merge the `lombok` branch into `main`.
-> 
-> **You must submit all your code to the `main` branch.**
+- MSG one-to-one通信报文
+- GRP one-to-group通信报文
+- USER 用户登录和登出时，给其他用户发送报文
+- USERS 用户刚登陆时，提供用户列表，用于检测用户名是否重复。
+- SERVER 服务器状态信息报文，用于服务器进程停止时通知user。
 
-You need to then clone your fork into local machine. You can then open the whole folder as a project in your
-IDE - it will recognize the Maven structure and automatically configure the project.
-
-![](assets/project-structure.png)
-
-### Install the Project
-
-We will define the commonly used constants and models in the `chatting-common` model,
-which is the dependency of `chatting-client` and `chatting-server`.
-
-> This design is a common practice in many large projects.
-> But it is not mandatory for you to follow this architecture.
-> You can move the model codes to other places if you want.
-
-The first thing you need to do is to install the parent pom into the local maven repository.
-
-```shell
-mvn install
-```
-
-Note that each time after you modified the codes in `chatting-common`, you need to reinstall
-the subproject -- you can think about why.
-
-```shell
-mvn install -pl chatting-common
-```
-
-### Run the Server
-
-As our client will try to connect to the server socket when starting-up, you need to run the server before starting
-one or more clients.
-
-Please find the `Main` class under the `chatting-server` model, implement your `ServerSocket`,
-and run the `main` method.
-
-### Run the Client
-
-If you are using JDK 1.8 with JavaFX bundled, you may find the `Main` class under the `chatting-client` model,
-and run the `main` method to start a client.
-Note that you can start multiple clients by clicking the _run_ button several times.
-
-If you are using JDK in any higher version, please use the `javafx` plugin to run the client.
-```shell
-mvn javafx:run -pl chatting-client
-```
-
-Alternatively, you can find the goal in the plugin list, and click on it:
-![](assets/idea-maven-javafx-plugin.png)
-
-## Tasks
-
-- [ ] Server & Client (70 pt)
-- [ ] JavaFX GUI (15 pt)
-- [ ] Exception handling (15 pt)
-- [ ] Bonus (12 pt)
-
-For more details, please refer to the [assignment description](DESCRIPTION.md).
-
-## Hint
-
-As this project is Maven managed, it's easy to introduce _dependencies_ and _build plugins_.
-This template already added some dependencies that may help you finish this assignment,
-you can search their documents and try figuring out how these dependencies could be helpful, but it's not
-necessary to use them. You may also introduce some other dependencies, but ask the teacher or SA before doing so.
-
-## More Information
-
-If there's anything ambiguous about the document or the instruction above,
-feel free to [open an issue](https://github.com/hezean/chatting/issues/new) and ask.
-Your question may also help others to better understand this assignment 🔥
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 功能要求
+除了bonus以外的所有功能，都已经实现。

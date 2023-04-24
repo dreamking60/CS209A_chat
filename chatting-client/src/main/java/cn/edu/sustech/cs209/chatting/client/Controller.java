@@ -14,10 +14,12 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.MediaPlayer;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.scene.media.Media;
 import javafx.util.Callback;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
@@ -318,6 +320,21 @@ public class Controller implements Initializable {
     @FXML
     public void uploadFile(ActionEvent actionEvent) {
         // TODO: upload File
+        // Create file chooser
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Select Upload File");
+
+        // Show file chooser dialog
+        File selectedFile = fileChooser.showOpenDialog(null);
+
+        if (selectedFile != null) {
+            // Get file name and path
+            String fileName = selectedFile.getName();
+            String filePath = selectedFile.getAbsolutePath();
+
+            // Upload file to server
+
+        }
     }
 
     /**
