@@ -8,14 +8,19 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-public class ClientHandler implements Runnable{
+/**
+ * Client Handler.
+ */
+public class ClientHandler implements Runnable {
     private Socket client;
     private String clientId;
     private Server server;
+
     public ClientHandler(Socket client, Server server) {
         this.client = client;
         this.server = server;
     }
+
     @Override
     public void run() {
         try {
@@ -37,7 +42,7 @@ public class ClientHandler implements Runnable{
             // Read the message from client
             byte[] msg = new byte[1024];
             int msgLen;
-            while((msgLen = in.read(msg)) != -1) {
+            while ((msgLen = in.read(msg)) != -1) {
                 String msgStr = new String(msg, 0, msgLen);
                 System.out.println("Client: " + msgStr);
 
@@ -49,7 +54,7 @@ public class ClientHandler implements Runnable{
             System.out.println("ClientHandler Error.");
         } finally {
             try {
-                if(client.equals(server.getClientList().get(clientId))) {
+                if (client.equals(server.getClientList().get(clientId))) {
                     server.getClientList().remove(clientId);
                     userLogout();
                 }
@@ -60,7 +65,12 @@ public class ClientHandler implements Runnable{
         }
     }
 
-    // Send message to target client
+    /**
+     * Send message to client.
+     *
+     * @param msg message from client
+     * @return
+     */
     public boolean sendMessage(String msg) {
         try {
             String Head = msg.split(":")[0];
@@ -76,13 +86,13 @@ public class ClientHandler implements Runnable{
                 }
                 OutputStream out = targetClient.getOutputStream();
                 out.write(msgContent.getBytes());
-            } else if(Head.equals("GRP")) {
+            } else if (Head.equals("GRP")) {
                 String msgBody = msg.substring(4);
                 // Get users in the group
                 String[] users = msgBody.split(":")[2].split(",");
                 // send msg to users
-                for(String user : users) {
-                    if(user.equals(clientId)) {
+                for (String user : users) {
+                    if (user.equals(clientId)) {
                         continue;
                     }
                     Socket targetClient = server.getClientList().get(user);
@@ -96,13 +106,13 @@ public class ClientHandler implements Runnable{
                 }
 
 
-            } else if(Head.equals("GETUSERS")) {
+            } else if (Head.equals("GETUSERS")) {
                 String usersStr = server.getClientList().keySet().stream().collect(Collectors.joining(","));
                 String msgContent = "USERS:" + usersStr;
                 System.out.println(msgContent);
                 OutputStream out = client.getOutputStream();
                 out.write(msgContent.getBytes());
-            } else if(Head.equals("USER:logout")) {
+            } else if (Head.equals("USER:logout")) {
                 server.getClientList().remove(clientId);
                 client.close();
             }

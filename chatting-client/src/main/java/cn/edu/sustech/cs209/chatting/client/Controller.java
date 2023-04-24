@@ -1,6 +1,14 @@
 package cn.edu.sustech.cs209.chatting.client;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.Socket;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -13,21 +21,15 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.scene.media.Media;
 import javafx.util.Callback;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.Socket;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
+/**
+ * Controller for the main window.
+ */
 public class Controller implements Initializable {
     private MediaPlayer mediaPlayer;
     public TextArea inputArea;
@@ -69,7 +71,7 @@ public class Controller implements Initializable {
         dialog.setContentText("Username:");
 
         Optional<String> input = dialog.showAndWait();
-        if(input.isPresent() && !input.get().isEmpty()) {
+        if (input.isPresent() && !input.get().isEmpty()) {
             username = input.get();
         } else {
             System.out.println("Invalid username, exiting");
@@ -87,7 +89,7 @@ public class Controller implements Initializable {
             byte[] buf = new byte[1024];
             int len = in.read(buf);
             String userList = new String(buf, 0, len);
-            if(userList.startsWith("USERS:")){
+            if (userList.startsWith("USERS:")){
                 userList = userList.substring(6);
                 users.addAll(userList.split(","));
             }
@@ -96,10 +98,10 @@ public class Controller implements Initializable {
             // check if username is in the list
             boolean flag = false;
             do {
-                if(users != null && !users.isEmpty()) {
+                if (users != null && !users.isEmpty()) {
                     flag = users.stream().anyMatch(user -> user.equals(username));
                 }
-                if(!flag) {
+                if (!flag) {
                     break;
                 } else {
                     Dialog<String> dialog = new TextInputDialog();
@@ -116,7 +118,7 @@ public class Controller implements Initializable {
                     }
                 }
 
-            } while(flag);
+            } while (flag);
 
             client.getOutputStream().write(username.getBytes());
         } catch (IOException e) {
@@ -128,6 +130,7 @@ public class Controller implements Initializable {
         }
 
     }
+
     public void openListener() {
         // msg Listener
         Thread msgListener = new Thread(new userClient(client, username, this));
@@ -250,7 +253,7 @@ public class Controller implements Initializable {
                 alert.showAndWait();
                 return;
             }
-            if(selectedUsers.size() <= 2) {
+            if (selectedUsers.size() <= 2) {
                 Alert alert = new Alert(Alert.AlertType.ERROR);
                 alert.setTitle("Error");
                 alert.setContentText("Group must have at least 3 users");
@@ -308,7 +311,7 @@ public class Controller implements Initializable {
         }
         String msg = inputArea.getText();
         Long timestamp = System.currentTimeMillis();
-        if(chat.isGroupChat) {
+        if (chat.isGroupChat) {
             SendGroupMessage(msg);
         } else {
             Send(msg);
@@ -427,7 +430,7 @@ public class Controller implements Initializable {
                 chatContentList.getItems().clear();
                 chatContentList.setItems(chatContentItem);
                 chatContentList.scrollTo(chatContentItem.size() - 1);
-                if(chat.isGroupChat) {
+                if (chat.isGroupChat) {
                     groupItems = chat.getParticipant();
                     groupList.setItems(FXCollections.observableArrayList());
                     groupList.getItems().clear();
@@ -469,8 +472,8 @@ public class Controller implements Initializable {
     public void updateUsers(String[] users) {
         this.users.clear();
         this.users.addAll(Arrays.asList(users));
-        for(String user : users) {
-            if(!chatItems.contains(user) && !user.equals(username)) {
+        for (String user : users) {
+            if (!chatItems.contains(user) && !user.equals(username)) {
                 chatItems.add(user);
                 chats.add(new Chat(username, user));
             }
@@ -478,7 +481,7 @@ public class Controller implements Initializable {
     }
 
     public void userLogin(String user) {
-        if(!chatItems.contains(user) && !user.equals(username)) {
+        if (!chatItems.contains(user) && !user.equals(username)) {
             users.add(user);
             chatItems.add(user);
             chats.add(new Chat(username, user));
@@ -498,12 +501,12 @@ public class Controller implements Initializable {
 
     // update one-to-one chat message
     public void updateMsg(String sendBy, String msgBody) {
-        if(!chatItems.contains(sendBy)) {
+        if (!chatItems.contains(sendBy)) {
             chatItems.add(sendBy);
             chats.add(new Chat(username, sendBy));
         }
         Long timestamp = System.currentTimeMillis();
-        chats.get(chatItems.indexOf(sendBy)).getMessages(timestamp, msgBody);
+        chats.get(chatItems.indexOf(sendBy)).getMessage(timestamp, msgBody);
 
         // play ringtone
         RingPlay();
@@ -512,12 +515,12 @@ public class Controller implements Initializable {
 
     // update group chat message
     public void updateMsg(String sendBy, String msgBody, String sendToGroup, String[] participant) {
-        if(!chatItems.contains(sendToGroup)) {
+        if (!chatItems.contains(sendToGroup)) {
             chatItems.add(sendToGroup);
             chats.add(new Chat(username, sendToGroup, Arrays.stream(participant).toList()));
         }
         Long timestamp = System.currentTimeMillis();
-        chats.get(chatItems.indexOf(sendToGroup)).getMessages(timestamp, msgBody, sendBy);
+        chats.get(chatItems.indexOf(sendToGroup)).getMessage(timestamp, msgBody, sendBy);
 
         // play ringtone
         RingPlay();
